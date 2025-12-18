@@ -3,12 +3,22 @@ import tkinter as tk
 from ui.dashboard import DashboardUI
 from core.timer import TimerEngine
 
+# At the top of ui/app.py, add this import:
+from core.session import FocusSession
+# Third iteration after ai/camera.py is added
+from ai.camera import WebcamFeed
+
+
 class MetacognitiveApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Flow Engine v1.0")
         self.geometry("400x500")
         
+        # Initialize Hardware
+        self.camera = WebcamFeed()
+        self.camera.start() # This will try to open the cam
+
         # Initialize components
         self.timer_logic = TimerEngine()
         self.ui = DashboardUI(self, self) # Pass 'self' as controller
@@ -16,10 +26,23 @@ class MetacognitiveApp(tk.Tk):
         # Start the update loop
         self.update_clock()
 
+    #def start_session(self):
+        #print("UI: Start button clicked")
+        #self.timer_logic.start(25) # Start 25 min timer
+# ... inside the MetacognitiveApp class ...
+
     def start_session(self):
         print("UI: Start button clicked")
-        self.timer_logic.start(25) # Start 25 min timer
+        
+        # OLD CODE (Delete or comment out):
+        # self.timer_logic.start(25)
 
+        # NEW CODE (Object-Oriented):
+        # We create a specific 'FocusSession' object.
+        # This satisfies "Passing Objects" because we pass self.timer_logic into it.
+        session = FocusSession(self.timer_logic)
+        session.start()
+        
     def stop_session(self):
         print("UI: Stop button clicked")
         self.timer_logic.stop()
@@ -41,3 +64,10 @@ class MetacognitiveApp(tk.Tk):
         
         # Schedule the next check in 100ms
         self.after(100, self.update_clock)
+
+    # Add this method inside MetacognitiveApp
+    def on_close(self):
+        print("Shutting down...")
+        self.camera.stop()
+        self.destroy()
+        self.protocol("WM_DELETE_WINDOW", self.on_close)

@@ -7,6 +7,7 @@ from core.timer import TimerEngine
 from core.session import FocusSession
 # Third iteration after ai/camera.py is added
 from ai.camera import WebcamFeed
+from ai.sensor import EmotionSensor  # <--- THIS WAS MISSING OR BROKEN
 
 
 class MetacognitiveApp(tk.Tk):
@@ -19,9 +20,15 @@ class MetacognitiveApp(tk.Tk):
         self.camera = WebcamFeed()
         self.camera.start() # This will try to open the cam
 
+        # Initialize AI (The Brain) <--- ADD THIS BLOCK
+        self.sensor = EmotionSensor()
+        self.sensor.start()
+
         # Initialize components
         self.timer_logic = TimerEngine()
         self.ui = DashboardUI(self, self) # Pass 'self' as controller
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.update_clock()
 
         # Start the update loop
         self.update_clock()
@@ -52,22 +59,30 @@ class MetacognitiveApp(tk.Tk):
         """
         The heartbeat of the app. Runs every 100ms.
         """
+        # 1. ALWAYS update the AI stats (Even if timer is stopped)
+        stress_val = self.sensor.stress_level
+        emotion = self.sensor.current_emotion
+        
+        # Update the GUI components
+        self.ui.progress_stress['value'] = stress_val
+        self.ui.lbl_stress.config(text=f"Stress Level: {stress_val}% ({emotion})")
+
+     # 2. Update Timer ONLY if running
         if self.timer_logic.is_running:
-            # Get the math from the engine
             time_str = self.timer_logic.get_time_string()
-            # Send it to the UI
             self.ui.update_timer(time_str)
             
             if self.timer_logic.is_finished():
                 self.timer_logic.stop()
                 print("Session Complete!")
         
-        # Schedule the next check in 100ms
+        # Schedule the next check
         self.after(100, self.update_clock)
 
     # Add this method inside MetacognitiveApp
     def on_close(self):
         print("Shutting down...")
         self.camera.stop()
-        self.destroy()
+        self.sensor.stop() # <--- STOP THE THREAD SAFELY
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.destroy()

@@ -5,6 +5,7 @@ from core.timer import TimerEngine
 
 # At the top of ui/app.py, add this import:
 from core.session import FocusSession
+from core.session import RestSession
 # Third iteration after ai/camera.py is added
 from ai.camera import WebcamFeed
 from ai.sensor import EmotionSensor  # <--- THIS WAS MISSING OR BROKEN
@@ -53,6 +54,8 @@ class MetacognitiveApp(tk.Tk):
         print("UI: Stop button clicked")
         self.timer_logic.stop()
         self.ui.update_timer("00:00")
+        
+
 
     def update_clock(self):
         """
@@ -74,6 +77,15 @@ class MetacognitiveApp(tk.Tk):
             if self.timer_logic.is_finished():
                 self.timer_logic.stop()
                 print("Session Complete!")
+                # Decide next session based on simple logic
+                if stress_val >= 50:
+                    print("High Stress Detected: Starting Rest Session")
+                    session = RestSession(self.timer_logic)
+                    session.start()
+                else:
+                    print("Normal Stress: Starting Focus Session")
+                    session = FocusSession(self.timer_logic)
+                    session.start()
         
         # Schedule the next check
         self.after(100, self.update_clock)

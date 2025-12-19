@@ -9,7 +9,6 @@ from core.session import FocusSession
 from ai.camera import WebcamFeed
 from ai.sensor import EmotionSensor  # <--- THIS WAS MISSING OR BROKEN
 
-
 class MetacognitiveApp(tk.Tk):
     def __init__(self):
         super().__init__()

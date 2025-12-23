@@ -41,6 +41,13 @@ class DashboardUI(tk.Frame):
                                 bg="#c0392b", fg="white", font=("Arial", 12, "bold"))
         self.btn_stop.pack(pady=5, fill="x")
 
+        # --- NEW BUTTON: END DAY ---
+        self.btn_end = tk.Button(self, text="End Day & View Stats", 
+                               command=self.controller.end_day, 
+                               bg="#8e44ad", fg="white", font=("Arial", 10, "bold"))
+        self.btn_end.pack(pady=20, fill="x")
+        # ---------------------------
+
         # 5. Stress Display
         self.lbl_stress = tk.Label(self, text="Stress: 0% (Neutral)", 
                                  bg="#2c3e50", fg="white")

@@ -1,48 +1,42 @@
-# ai/camera.py
 import cv2
-
-# Rubric Hit: Custom Exception Class
-class CameraNotFoundError(Exception):
-    """Custom error raised when webcam cannot be accessed."""
-    pass
+from PIL import Image, ImageTk
+import threading
 
 class WebcamFeed:
-    def __init__(self, camera_index=0):
-        self.camera_index = camera_index
-        self.cap = None
+    def __init__(self):
+        # Initialize Camera
+        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        self.is_running = False
+        self.current_image = None # For UI
+        self.last_frame = None    # For AI (Raw Data)
+        self.lock = threading.Lock() # Thread safety
 
     def start(self):
-        """Attempts to open the webcam."""
-        print(f"Attempting to open camera {self.camera_index}...")
-        
-        # Rubric Hit: Exception Handling (try/except)
-        try:
-            self.cap = cv2.VideoCapture(self.camera_index)
-            
-            # Check if camera actually opened (OpenCV doesn't always throw an error automatically)
-            if not self.cap.isOpened():
-                raise CameraNotFoundError(f"Camera {self.camera_index} could not be opened.")
-                
-            print("Camera started successfully.")
-            return True
-
-        except CameraNotFoundError as e:
-            print(f"CRITICAL ERROR: {e}")
-            print("Switching to 'Blind Mode' (Timer will work without AI).")
-            return False
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            return False
-
-    def get_frame(self):
-        """Reads a single frame from the camera."""
-        if self.cap and self.cap.isOpened():
-            ret, frame = self.cap.read()
-            if ret:
-                return frame
-        return None
+        if not self.is_running:
+            self.is_running = True
+            self.thread = threading.Thread(target=self._update_loop)
+            self.thread.daemon = True
+            self.thread.start()
 
     def stop(self):
-        if self.cap:
+        self.is_running = False
+        if self.cap.isOpened():
             self.cap.release()
-            print("Camera released.")
+
+    def _update_loop(self):
+        while self.is_running:
+            ret, frame = self.cap.read()
+            if ret:
+                with self.lock:
+                    # 1. Save Raw Frame for AI
+                    self.last_frame = frame.copy() 
+                    
+                    # 2. Convert for UI (BGR -> RGB)
+                    cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+                    img = Image.fromarray(cv2image)
+                    self.current_image = ImageTk.PhotoImage(image=img)
+
+    def get_frame(self):
+        """Called by EmotionSensor to borrow the latest image"""
+        with self.lock:
+            return self.last_frame

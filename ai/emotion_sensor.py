@@ -2,63 +2,114 @@ import cv2
 import threading
 import time
 from deepface import DeepFace
+from collections import deque
 
-class EmotionSensorService:
-    def __init__(self):
-        self.cap = cv2.VideoCapture(0) # 0 is usually the default camera
+class EmotionSensor: # Renamed to match your App import
+    def __init__(self, camera_feed):
+        # FIX 1: Receive the Shared Camera (No cv2.VideoCapture here!)
+        self.camera = camera_feed 
+        
         self.current_emotion = "Neutral"
         self.is_running = False
         self.stress_level = 0
         
-    def start_sensing(self):
-        self.is_running = True
-        # Run the heavy loop in a separate background thread
-        sensing_thread = threading.Thread(target=self._sensing_loop)
-        sensing_thread.daemon = True # Kills thread when app closes
-        sensing_thread.start()
+        # Buffer to smooth out noise (last 5 frames)
+        self.emotion_buffer = deque(maxlen=5)
+
+    def start(self):
+        if not self.is_running:
+            self.is_running = True
+            thread = threading.Thread(target=self._sensing_loop)
+            thread.daemon = True
+            thread.start()
+            print("AI: Emotion Sensor Started")
+
+    def stop(self):
+        self.is_running = False
+
+    def _preprocess_frame(self, frame):
+        """
+        Applies 'Digital Night Vision' (CLAHE) to see faces in dark rooms.
+        """
+        # Convert to LAB to isolate Lightness channel
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+
+        # Apply CLAHE to Lightness channel only
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+        cl = clahe.apply(l)
+
+        # Merge back
+        limg = cv2.merge((cl,a,b))
+        final = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+        
+        return final
 
     def _sensing_loop(self):
         while self.is_running:
-            ret, frame = self.cap.read()
-            if not ret:
+            # FIX 2: Get frame from the Shared Camera
+            raw_frame = self.camera.get_frame()
+            
+            if raw_frame is None:
+                time.sleep(0.5)
                 continue
 
-            # Optimization: Only analyze every 50th frame or every 3 seconds
-            # DeepFace is slow!
+            # FIX 3: Apply Digital Night Vision
+            frame = self._preprocess_frame(raw_frame)
+
             try:
-                # [Requirement: External Library Integration]
-                # actions=['emotion'] analyzes the face for emotions
-                result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
+                # 1. Analyze with Enforced Detection (Prevents analyzing walls)
+                result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=True)
                 
-                # result is a list of dicts. Get the first face found.
-                dominant_emotion = result[0]['dominant_emotion']
-                self.current_emotion = dominant_emotion
+                # Get specific emotion scores
+                emotions = result[0]['emotion'] 
                 
-                self._calculate_stress(dominant_emotion)
+                # --- SENSITIVITY PATCH ---
+                # If 'Happy' is even slightly visible (> 1%), count it as a smile.
+                # This compensates for bad lighting.
+                if emotions['happy'] > 1.0:
+                    raw_emotion = 'happy'
+                    # Optional Debug:
+                    # print(f"AI: Trace Smile Detected ({emotions['happy']:.1f}%)")
+                else:
+                    # Otherwise, use the dominant one
+                    raw_emotion = result[0]['dominant_emotion']
+                    
+                    # Logic Filter: Ignore weak negative emotions (shadows)
+                    score = emotions[raw_emotion]
+                    if raw_emotion in ['fear', 'sad', 'angry'] and score < 50:
+                        raw_emotion = 'neutral'
+                # -------------------------
+
+                # Buffer Smoothing
+                self.emotion_buffer.append(raw_emotion)
+                if len(self.emotion_buffer) > 0:
+                    smoothed = max(set(self.emotion_buffer), key=self.emotion_buffer.count)
+                else:
+                    smoothed = raw_emotion
+
+                self.current_emotion = smoothed
+                self._calculate_stress(smoothed)
                 
-            except Exception as e:
-                # [Requirement: Exception Handling]
-                print(f"DeepFace Error: {e}")
+            except Exception:
+                # No face found -> User took a break
+                self.current_emotion = "No Face"
+                self._decay_stress()
             
-            time.sleep(2) # Pause to save CPU
+            # Pause to save CPU
+            time.sleep(2) 
 
     def _calculate_stress(self, emotion):
-        # Map emotions to stress (Logic)
-        # tired/sad/fear = High Stress
-        high_stress_triggers = ['sad', 'fear', 'angry', 'disgust']
+        """
+        Updates stress level. 
+        Note: 'Neutral' also lowers stress now.
+        """
+        high_stress = ['sad', 'fear', 'angry', 'disgust']
+        relax_triggers = ['happy', 'neutral']
         
-        if emotion in high_stress_triggers:
-            self.stress_level += 10
-        elif emotion == 'happy':
-            self.stress_level = max(0, self.stress_level - 5)
+        if emotion in high_stress:
+            self.stress_level += 5
+        elif emotion in relax_triggers:
+            self.stress_level -= 2
             
-        # "Safety reset" logic you asked about earlier
-        if self.stress_level > 100:
-            self.stress_level = 100
-
-    def get_stress_data(self):
-        return self.stress_level, self.current_emotion
-
-    def stop_sensing(self):
-        self.is_running = False
-        self.cap.release()
+        # Keep within bounds (0-

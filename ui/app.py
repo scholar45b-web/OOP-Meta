@@ -9,29 +9,38 @@ from ai.sensor import EmotionSensor
 
 class MetacognitiveApp(tk.Tk):
     def __init__(self):
+        # FIX 1: Initialize the parent tk.Tk class FIRST.
+        # Without this, the app has no window and crashes immediately.
         super().__init__()
-        self.title("Flow Engine v3.0")
-        self.geometry("400x650") 
         
-        # 1. Initialize Backend
-        print("System: Initializing Backend...")
-        self.camera = WebcamFeed()
+        self.title("Flow Engine vFinal") # Optional: Set title
+        self.geometry("400x650")         # Optional: Set size
+
+        # 1. Initialize Hardware (Camera)
+        print("System: Initializing Camera...")
+        # FIX 2: Create the camera. It takes NO arguments.
+        # Do NOT pass self.camera here.
+        self.camera = WebcamFeed() 
         self.camera.start()
-        
-        self.sensor = EmotionSensor()
+
+        # 2. Initialize AI (The Brain)
+        print("System: Initializing Emotion Sensor...")
+        # Pass the camera to the sensor (The Sensor watches the Camera)
+        self.sensor = EmotionSensor(self.camera) 
         self.sensor.start()
 
+        # 3. Initialize Logic
         self.timer_logic = TimerEngine()
         self.stats_manager = UserStats() # Load history
         self.session_manager = SessionManager(self.timer_logic, self.stats_manager)
         
-        # 2. Page Container (Stacking Logic)
+        # 4. Page Container (Stacking Logic)
         self.container = tk.Frame(self)
         self.container.pack(side="top", fill="both", expand=True)
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
-        # 3. Initialize Pages
+        # 5. Initialize Pages
         self.frames = {}
         for PageClass in (DashboardUI, StatsUI):
             page_name = PageClass.__name__
@@ -40,7 +49,7 @@ class MetacognitiveApp(tk.Tk):
             # Stack them on top of each other
             frame.grid(row=0, column=0, sticky="nsew")
 
-        # 4. Start
+        # 6. Start Protocols
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.show_frame("DashboardUI")
         self.update_clock()

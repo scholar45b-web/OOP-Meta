@@ -8,7 +8,7 @@ class UserStats:
         self.data = self._load_data()
 
     def _load_data(self):
-        """Rubric Hit: File I/O (Read)"""
+        #Read file
         if os.path.exists(self.filename):
             try:
                 with open(self.filename, 'r') as f:
@@ -18,7 +18,7 @@ class UserStats:
         return []
 
     def save_session(self, duration_seconds):
-        """Rubric Hit: File I/O (Write)"""
+        #Write file
         if duration_seconds < 1: return # Don't save empty sessions
 
         entry = {

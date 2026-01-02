@@ -6,7 +6,6 @@ from collections import deque
 
 class EmotionSensor: # Renamed to match your App import
     def __init__(self, camera_feed):
-        # FIX 1: Receive the Shared Camera (No cv2.VideoCapture here!)
         self.camera = camera_feed 
         
         self.current_emotion = "Neutral"
@@ -47,14 +46,12 @@ class EmotionSensor: # Renamed to match your App import
 
     def _sensing_loop(self):
         while self.is_running:
-            # FIX 2: Get frame from the Shared Camera
             raw_frame = self.camera.get_frame()
             
             if raw_frame is None:
                 time.sleep(0.5)
                 continue
 
-            # FIX 3: Apply Digital Night Vision
             frame = self._preprocess_frame(raw_frame)
 
             try:
@@ -65,9 +62,9 @@ class EmotionSensor: # Renamed to match your App import
                 emotions = result[0]['emotion'] 
                 
                 # --- SENSITIVITY PATCH ---
-                # If 'Happy' is even slightly visible (> 1%), count it as a smile.
+                # If 'Happy' is even slightly visible (> 50%), count it as a smile.
                 # This compensates for bad lighting.
-                if emotions['happy'] > 1.0:
+                if emotions['happy'] > 50.0:
                     raw_emotion = 'happy'
                     # Optional Debug:
                     # print(f"AI: Trace Smile Detected ({emotions['happy']:.1f}%)")

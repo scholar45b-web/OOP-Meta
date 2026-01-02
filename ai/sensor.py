@@ -5,7 +5,6 @@ from deepface import DeepFace
 from collections import deque
 
 class EmotionSensor:
-    # FIX: This line MUST accept 'camera_feed'
     def __init__(self, camera_feed):
         self.camera = camera_feed 
         
@@ -51,8 +50,8 @@ class EmotionSensor:
                 result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=True)
                 emotions = result[0]['emotion'] 
                 
-                # SENSITIVITY PATCH: Check for smile trace > 1%
-                if emotions['happy'] > 1.0:
+                # SENSITIVITY PATCH: Check for smile trace > 50%
+                if emotions['happy'] > 50.0:
                     raw_emotion = 'happy'
                 else:
                     raw_emotion = result[0]['dominant_emotion']

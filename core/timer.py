@@ -1,4 +1,3 @@
-# core/timer.py
 import time
 
 class TimerEngine:
@@ -10,7 +9,7 @@ class TimerEngine:
         self.start_time = None
         self.duration = 0
         self.is_running = False
-        self.mode = "COUNTDOWN" # Needed for UI color changes
+        self.mode = "COUNTDOWN" # UI color changes
 
     def start(self, minutes):
         self.duration = minutes * 60
@@ -34,16 +33,15 @@ class TimerEngine:
             return "00:00"
         
         elapsed = time.time() - self.start_time
-        # FIX: Removed max(0, ...) so we can get negative numbers
         remaining = self.duration - elapsed 
         
         if remaining < 0:
-            # We are in OVERTIME (Flow Mode)
+            # Overtime (Flow State)
             self.mode = "FLOW" # Tell the UI to turn Gold
             overtime = abs(remaining)
             mins = int(overtime // 60)
             secs = int(overtime % 60)
-            return f"+{mins:02d}:{secs:02d}" # The "+" shows flow
+            return f"+{mins:02d}:{secs:02d}" 
         else:
             # Normal Countdown
             self.mode = "COUNTDOWN"

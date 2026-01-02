@@ -1,46 +1,42 @@
 import tkinter as tk
 from ui.dashboard import DashboardUI
-from ui.leaderboard import StatsUI  # Import the new page
+from ui.leaderboard import StatsUI  
 from core.timer import TimerEngine
 from core.session import SessionManager 
-from core.stats import UserStats # Import the data manager
+from core.stats import UserStats 
 from ai.camera import WebcamFeed
 from ai.sensor import EmotionSensor
 
 class MetacognitiveApp(tk.Tk):
     def __init__(self):
-        # FIX 1: Initialize the parent tk.Tk class FIRST.
-        # Without this, the app has no window and crashes immediately.
         super().__init__()
         
         self.title("Flow Engine vFinal") # Optional: Set title
         self.geometry("400x650")         # Optional: Set size
 
-        # 1. Initialize Hardware (Camera)
+        # Initialize Hardware (Camera)
         print("System: Initializing Camera...")
-        # FIX 2: Create the camera. It takes NO arguments.
-        # Do NOT pass self.camera here.
+        # Create the camera
         self.camera = WebcamFeed() 
         self.camera.start()
 
-        # 2. Initialize AI (The Brain)
+        # Initialize AI
         print("System: Initializing Emotion Sensor...")
-        # Pass the camera to the sensor (The Sensor watches the Camera)
         self.sensor = EmotionSensor(self.camera) 
         self.sensor.start()
 
-        # 3. Initialize Logic
+        # Initialize Logic
         self.timer_logic = TimerEngine()
         self.stats_manager = UserStats() # Load history
         self.session_manager = SessionManager(self.timer_logic, self.stats_manager)
         
-        # 4. Page Container (Stacking Logic)
+        # Page Container (Stacking Logic)
         self.container = tk.Frame(self)
         self.container.pack(side="top", fill="both", expand=True)
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
-        # 5. Initialize Pages
+        # Initialize Pages
         self.frames = {}
         for PageClass in (DashboardUI, StatsUI):
             page_name = PageClass.__name__
@@ -49,7 +45,7 @@ class MetacognitiveApp(tk.Tk):
             # Stack them on top of each other
             frame.grid(row=0, column=0, sticky="nsew")
 
-        # 6. Start Protocols
+        # Start Protocols
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.show_frame("DashboardUI")
         self.update_clock()
@@ -67,12 +63,10 @@ class MetacognitiveApp(tk.Tk):
         self.frames["DashboardUI"].lbl_status.config(text="Status: Focus Mode", fg="white")
 
     def stop_session(self):
-        # 1. Logic
         stats = self.session_manager.stop_session()
         work_secs = int(stats["work_time"])
         rest_secs = int(stats["rest_needed"])
         
-        # 2. Save Data (Rubric Hit: File I/O)
         # We only save if it was a meaningful session (> 30s)
         if stats.get("type") == "Focus" and work_secs > 10:
             self.stats_manager.save_session(work_secs)
@@ -92,13 +86,10 @@ class MetacognitiveApp(tk.Tk):
 
     def end_day(self):
         """Connected to the 'End Day' button"""
-        # Stop any running timer first
         self.stop_session() 
-        # Switch to the Leaderboard
         self.show_frame("StatsUI")
 
     def update_clock(self):
-        # --- AI Updates ---
         try:
             stress_val = self.sensor.stress_level
             current_emotion = self.sensor.current_emotion
@@ -106,12 +97,10 @@ class MetacognitiveApp(tk.Tk):
             self.frames["DashboardUI"].lbl_stress.config(text=f"Stress: {stress_val}% ({current_emotion})")
         except: pass
 
-        # --- Timer Updates ---
         if self.timer_logic.is_running:
             time_str = self.timer_logic.get_time_string()
             self.frames["DashboardUI"].update_timer(time_str)
 
-            # Flow Logic
             if self.timer_logic.is_finished():
                 can_flow = self.session_manager.current_session and self.session_manager.current_session.can_flow
                 

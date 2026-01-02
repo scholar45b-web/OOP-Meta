@@ -6,17 +6,17 @@ class StatsUI(tk.Frame):
         self.controller = controller
         self.configure(bg="#2c3e50")
         
-        # 1. Title
+        # Title
         self.lbl_title = tk.Label(self, text="Session Complete!", 
                                 font=("Arial", 24, "bold"), bg="#2c3e50", fg="#f1c40f")
         self.lbl_title.pack(pady=30)
         
-        # 2. Total Time Display
+        # Total Time Display
         self.lbl_total = tk.Label(self, text="Total Focus Time: 0 mins", 
                                 font=("Arial", 16), bg="#2c3e50", fg="white")
         self.lbl_total.pack(pady=10)
 
-        # 3. History List (Leaderboard)
+        # History List (Leaderboard)
         self.lbl_history = tk.Label(self, text="Recent Sessions:", 
                                   font=("Arial", 12), bg="#2c3e50", fg="#bdc3c7")
         self.lbl_history.pack(pady=(20, 5))
@@ -24,7 +24,7 @@ class StatsUI(tk.Frame):
         self.listbox = tk.Listbox(self, height=5, width=40, bg="#34495e", fg="white")
         self.listbox.pack(pady=5)
 
-        # 4. Back/Exit Button
+        # Back/Exit Button
         self.btn_back = tk.Button(self, text="Back to Timer", 
                                 command=lambda: controller.show_frame("DashboardUI"),
                                 bg="#3498db", fg="white")
